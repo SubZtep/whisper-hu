@@ -6,5 +6,7 @@ torchaudio
 soundfile
 numpy
 pandas
+librosa
+logger
 
 # pip install torch==2.2.2+cu118 torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118

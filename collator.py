@@ -1,6 +1,9 @@
 import time
 import torch
+import logging
 import numpy as np
+
+logger = logging.getLogger(__name__)
 
 class WhisperCollator:
     def __init__(self, processor):
@@ -8,9 +11,15 @@ class WhisperCollator:
 
     def __call__(self, batch):
         t0 = time.perf_counter()
-        print("start batch")
+        logger.info("start batch")
 
-        audio = [x["audio"] for x in batch]
+        audio = [np.asarray(x["audio"], dtype=np.float32) for x in batch]
+
+        # per-sample normalization (important)
+        audio = [
+            a / (np.max(np.abs(a)) + 1e-9)
+            for a in audio
+        ]
 
         features = self.processor.feature_extractor(
             audio,
@@ -22,15 +31,7 @@ class WhisperCollator:
             [x["sentence"] for x in batch],
             padding=True,
             return_tensors="pt",
-        )
-
-        labels = labels.input_ids.masked_fill(
-            labels.input_ids == self.processor.tokenizer.pad_token_id,
-            -100,
-        )
-
-        t1 = time.perf_counter()
-        print(f"Collator: {(t1-t0):.3f}s")
+        ).input_ids
 
         return {
             "input_features": features.input_features,

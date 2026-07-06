@@ -1,10 +1,14 @@
 import os
 import torch
 import librosa
+import logging
 import functools
 import pandas as pd
 import soundfile as sf
 from torch.utils.data import Dataset
+
+logger = logging.getLogger(__name__)
+logging.getLogger("numba").setLevel(logging.WARNING)
 
 @functools.lru_cache(maxsize=2000)
 def load_audio(path):
@@ -35,7 +39,7 @@ class CommonVoiceDataset(Dataset):
 
     def __getitem__(self, idx):
         if idx % 1000 == 0:
-            print(f"Loading sample {idx}")
+            logger.info(f"Loading sample {idx}")
 
         path, sentence = self.rows[idx]
 
@@ -51,7 +55,7 @@ class CommonVoiceDataset(Dataset):
             audio = librosa.resample(audio, orig_sr=sr, target_sr=16000)
             sr = 16000
 
-        if audio.ndim > 1:
+        if audio.ndim == 2:
             audio = audio.mean(axis=1)
 
         return {

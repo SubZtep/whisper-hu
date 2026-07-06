@@ -3,6 +3,7 @@ import torch
 import librosa
 import logging
 import functools
+import numpy as np
 import pandas as pd
 import soundfile as sf
 from torch.utils.data import Dataset
@@ -32,7 +33,6 @@ class CommonVoiceDataset(Dataset):
                 df["sentence"].tolist(),
             )
         )
-        self.rows = self.rows[:200]
 
     def __len__(self):
         return len(self.rows)
@@ -50,13 +50,16 @@ class CommonVoiceDataset(Dataset):
         )
 
         audio, sr = load_audio(audio_path)
-        
-        if sr != 16000:
-            audio = librosa.resample(audio, orig_sr=sr, target_sr=16000)
-            sr = 16000
+
+        if isinstance(audio, list):
+            audio = np.array(audio, dtype=np.float32)
 
         if audio.ndim == 2:
             audio = audio.mean(axis=1)
+
+        if sr != 16000:
+            audio = librosa.resample(audio, orig_sr=sr, target_sr=16000) # TODO: preprocess once
+            sr = 16000
 
         return {
             "audio": audio,

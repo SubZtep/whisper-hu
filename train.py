@@ -16,8 +16,10 @@ def main():
     from transformers import Seq2SeqTrainer, Seq2SeqTrainingArguments
 
     processor = WhisperProcessor.from_pretrained(MODEL)
+    processor.tokenizer.pad_token = processor.tokenizer.eos_token
+
     model = WhisperForConditionalGeneration.from_pretrained(MODEL)
-    
+    model.config.use_cache = False
     model.config.forced_decoder_ids = (
         processor.get_decoder_prompt_ids(
             language=LANG,
@@ -30,20 +32,22 @@ def main():
 
     args = Seq2SeqTrainingArguments(
         output_dir="./whisper-hu",
-        per_device_train_batch_size=1,
+        per_device_train_batch_size=4,
         per_device_eval_batch_size=1,
-        gradient_accumulation_steps=2,
+        gradient_accumulation_steps=1,
+        gradient_checkpointing=False,
         learning_rate=1e-5,
         num_train_epochs=3,
         eval_strategy="steps",
-        eval_steps=200,
+        eval_steps=1000,
         logging_strategy="steps",
         logging_steps=5,
         save_strategy="steps",
-        save_steps=200,
-        fp16=False,
+        save_steps=1000,
+        save_total_limit=2,
+        fp16=True,
         max_grad_norm=1.0,
-        dataloader_num_workers=2,
+        dataloader_num_workers=4,
         disable_tqdm=False,
         report_to="none",
         remove_unused_columns=False,

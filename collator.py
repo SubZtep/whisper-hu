@@ -1,25 +1,24 @@
 import time
-import torch
-import logging
 import numpy as np
-
-logger = logging.getLogger(__name__)
 
 class WhisperCollator:
     def __init__(self, processor):
         self.processor = processor
 
     def __call__(self, batch):
-        t0 = time.perf_counter()
-        logger.info("start batch")
+        audio = []
+        texts = []
 
-        audio = [np.asarray(x["audio"], dtype=np.float32) for x in batch]
+        for x in batch:
+            a = np.asarray(x["audio"], dtype=np.float32)
+            a = a / (np.max(np.abs(a)) + 1e-9) # normalize
 
-        # per-sample normalization (important)
-        audio = [
-            a / (np.max(np.abs(a)) + 1e-9)
-            for a in audio
-        ]
+            # per-sample mono safety
+            if a.ndim == 2:
+                a = a.mean(axis=1)
+
+            audio.append(a)
+            texts.append(x["sentence"])
 
         features = self.processor.feature_extractor(
             audio,
@@ -28,10 +27,13 @@ class WhisperCollator:
         )
 
         labels = self.processor.tokenizer(
-            [x["sentence"] for x in batch],
+            texts,
             padding=True,
             return_tensors="pt",
         ).input_ids
+
+        # IMPORTANT for Whisper loss stability
+        labels[labels == self.processor.tokenizer.pad_token_id] = -100
 
         return {
             "input_features": features.input_features,

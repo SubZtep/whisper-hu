@@ -11,7 +11,6 @@ class WhisperCollator:
 
         for x in batch:
             a = np.asarray(x["audio"], dtype=np.float32)
-            a = a / (np.max(np.abs(a)) + 1e-9) # normalize
 
             # per-sample mono safety
             if a.ndim == 2:
@@ -30,9 +29,10 @@ class WhisperCollator:
             texts,
             padding=True,
             return_tensors="pt",
+            return_attention_mask=False,
         ).input_ids
 
-        # IMPORTANT for Whisper loss stability
+        labels = labels.clone()
         labels[labels == self.processor.tokenizer.pad_token_id] = -100
 
         return {

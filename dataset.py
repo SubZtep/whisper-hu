@@ -58,12 +58,13 @@ class CommonVoiceDataset(Dataset):
             audio = audio.mean(axis=1)
 
         if sr != 16000:
-            audio = librosa.resample(audio, orig_sr=sr, target_sr=16000) # TODO: preprocess once
+            audio = librosa.resample(audio, orig_sr=sr, target_sr=16000)
             sr = 16000
+
+        audio, _ = librosa.effects.trim(audio, top_db=30)
 
         return {
             "audio": audio,
             "sampling_rate": sr,
             "sentence": sentence,
         }
- 

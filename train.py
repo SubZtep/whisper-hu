@@ -77,7 +77,7 @@ def main():
         fp16=True,
         bf16=False,
         max_grad_norm=1.0,
-        dataloader_num_workers=4,
+        dataloader_num_workers=2,
         disable_tqdm=False,
         report_to="none",
         remove_unused_columns=False,

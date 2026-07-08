@@ -39,7 +39,7 @@ archive = archives[0]
 print(f"Extracting {archive.name}...")
 
 with tarfile.open(archive, "r:gz") as tar:
-    tar.extractall(DATA_DIR)
+    tar.extractall(path=DATA_DIR, filter="fully_trusted")
 
 print("Removing archive...")
 archive.unlink()

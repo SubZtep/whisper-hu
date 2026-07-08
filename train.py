@@ -67,12 +67,12 @@ def main():
 
     args = Seq2SeqTrainingArguments(
         output_dir="./whisper-hu",
-        per_device_train_batch_size=4,
-        per_device_eval_batch_size=1,
+        per_device_train_batch_size=16,
+        per_device_eval_batch_size=4,
         generation_max_length=225,
         generation_num_beams=1,
-        gradient_accumulation_steps=2,
-        gradient_checkpointing=True,
+        gradient_accumulation_steps=1,
+        gradient_checkpointing=False,
         warmup_steps=500,
         lr_scheduler_type="linear",
         learning_rate=5e-6,
@@ -88,7 +88,7 @@ def main():
         fp16=True,
         bf16=False,
         max_grad_norm=1.0,
-        dataloader_num_workers=2,
+        dataloader_num_workers=4,
         disable_tqdm=False,
         report_to="none",
         remove_unused_columns=False,
@@ -105,8 +105,8 @@ def main():
 
     trainer.train()
 
-    processor.save_pretrained("./whisper-hu")
-    model.save_pretrained("./whisper-hu")
+    processor.save_pretrained("./whisper-hu-final")
+    model.save_pretrained("./whisper-hu-final")
 
 if __name__ == "__main__":
     main()

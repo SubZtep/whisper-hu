@@ -8,7 +8,7 @@ from dataset import CommonVoiceDataset
 from collator import WhisperCollator
 from transformers import WhisperProcessor, WhisperForConditionalGeneration
 
-DATA_DIR_RELATIVE = "data"
+DATA = "data/cv-corpus-26.0-2026-06-12/hu"
 MODEL = "openai/whisper-small"
 LANG = "hu"
 
@@ -51,8 +51,8 @@ def main():
         task="transcribe",
     )
 
-    train_ds = CommonVoiceDataset(DATA_DIR_RELATIVE, "train")
-    eval_ds = CommonVoiceDataset(DATA_DIR_RELATIVE, "dev")
+    train_ds = CommonVoiceDataset(DATA, "train")
+    eval_ds = CommonVoiceDataset(DATA, "dev")
 
     args = Seq2SeqTrainingArguments(
         output_dir="./whisper-hu",

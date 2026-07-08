@@ -1,2 +1,4 @@
-__pycache__
-cv-corpus-26.0-2026-06-12
+/__pycache__/
+/.venv/
+/data/
+.env

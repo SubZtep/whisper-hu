@@ -32,12 +32,21 @@ def compute_metrics_factory(processor):
         label_ids = pred.label_ids.copy()
         label_ids[label_ids == -100] = processor.tokenizer.pad_token_id
 
-        pred_str = normalize(processor.batch_decode(pred_ids, skip_special_tokens=True))
-        label_str = normalize(processor.batch_decode(label_ids, skip_special_tokens=True))
+        pred_str = normalize(
+            processor.batch_decode(pred_ids, skip_special_tokens=True)
+        )
 
-        wer = wer_metric.compute(predictions=pred_str, references=label_str)
+        label_str = normalize(
+            processor.batch_decode(label_ids, skip_special_tokens=True)
+        )
 
-        return {"wer": wer * 100}
+        return {
+            "wer": wer_metric.compute(
+                predictions=pred_str,
+                references=label_str,
+            ) * 100
+        }
+
     return compute_metrics
 
 def main():
@@ -69,11 +78,11 @@ def main():
         learning_rate=5e-6,
         num_train_epochs=3,
         eval_strategy="steps",
-        eval_steps=1000,
+        eval_steps=5000,
         logging_strategy="steps",
         logging_steps=50,
         save_strategy="steps",
-        save_steps=1000,
+        save_steps=500,
         save_total_limit=2,
         predict_with_generate=True,
         fp16=True,

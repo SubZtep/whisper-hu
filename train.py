@@ -2,17 +2,38 @@ import os
 import re
 import torch
 import logging
+import warnings
 import evaluate
 import numpy as np
 from dataset import CommonVoiceDataset
 from collator import WhisperCollator
 from transformers import WhisperProcessor, WhisperForConditionalGeneration
+from transformers.utils import logging as hf_logging
 
 DATA = "data/cv-corpus-26.0-2026-06-12/hu"
 MODEL = "openai/whisper-small"
 LANG = "hu"
 
+# --- persistent output: mount Drive on Colab, else local ---
+try:
+    from google.colab import drive
+    drive.mount("/content/drive")
+    OUT = "/content/drive/MyDrive/whisper-hu"
+except Exception:
+    OUT = "./whisper-hu"
+
+OUT_FINAL = OUT + "-final"
+
 torch.backends.cuda.matmul.allow_tf32 = True
+
+# --- quiet the DOM-killing spam ---
+warnings.filterwarnings("ignore")
+hf_logging.set_verbosity_error()
+try:
+    import datasets
+    datasets.utils.logging.set_verbosity_error()
+except Exception:
+    pass
 
 logging.basicConfig(level=logging.WARNING)
 logger = logging.getLogger(__name__)
@@ -57,16 +78,15 @@ def main():
 
     model = WhisperForConditionalGeneration.from_pretrained(MODEL)
     model.config.use_cache = False
-    model.config.forced_decoder_ids = processor.get_decoder_prompt_ids(
-        language=LANG,
-        task="transcribe",
-    )
+    model.generation_config.language = "hungarian"
+    model.generation_config.task = "transcribe"
+    model.generation_config.forced_decoder_ids = None
 
     train_ds = CommonVoiceDataset(DATA, "train")
     eval_ds = CommonVoiceDataset(DATA, "dev")
 
     args = Seq2SeqTrainingArguments(
-        output_dir="./whisper-hu",
+        output_dir=OUT,
         per_device_train_batch_size=16,
         per_device_eval_batch_size=1,
         generation_max_length=225,
@@ -81,16 +101,19 @@ def main():
         eval_steps=1000,
         eval_accumulation_steps=10,
         logging_strategy="steps",
-        logging_steps=50,
+        logging_steps=200,
         save_strategy="steps",
         save_steps=1000,
         save_total_limit=3,
+        load_best_model_at_end=True,
+        metric_for_best_model="wer",
+        greater_is_better=False,
         predict_with_generate=True,
         fp16=True,
         bf16=False,
         max_grad_norm=1.0,
         dataloader_num_workers=4,
-        disable_tqdm=False,
+        disable_tqdm=True,
         report_to="none",
         remove_unused_columns=False,
     )
@@ -106,8 +129,9 @@ def main():
 
     trainer.train()
 
-    processor.save_pretrained("./whisper-hu-final")
-    model.save_pretrained("./whisper-hu-final")
+    processor.save_pretrained(OUT_FINAL)
+    model.save_pretrained(OUT_FINAL)
+    print(f"[saved] final model -> {OUT_FINAL}")
 
 if __name__ == "__main__":
     main()

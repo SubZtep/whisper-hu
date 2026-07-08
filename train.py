@@ -12,6 +12,8 @@ DATA = "data/cv-corpus-26.0-2026-06-12/hu"
 MODEL = "openai/whisper-small"
 LANG = "hu"
 
+torch.backends.cuda.matmul.allow_tf32 = True
+
 logging.basicConfig(level=logging.WARNING)
 logger = logging.getLogger(__name__)
 wer_metric = evaluate.load("wer")
@@ -61,7 +63,7 @@ def main():
         generation_max_length=225,
         generation_num_beams=1,
         gradient_accumulation_steps=2,
-        gradient_checkpointing=False,
+        gradient_checkpointing=True,
         warmup_steps=500,
         lr_scheduler_type="linear",
         learning_rate=5e-6,
@@ -69,7 +71,7 @@ def main():
         eval_strategy="steps",
         eval_steps=1000,
         logging_strategy="steps",
-        logging_steps=5,
+        logging_steps=50,
         save_strategy="steps",
         save_steps=1000,
         save_total_limit=2,

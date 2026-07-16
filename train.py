@@ -13,14 +13,29 @@ from transformers.utils import logging as hf_logging
 DATA = "data/cv-corpus-26.0-2026-06-12/hu"
 MODEL = "openai/whisper-small"
 LANG = "hu"
+HF_REPO = "SubZtep/whisper-hu"
 
-# --- persistent output: mount Drive on Colab, else local ---
+# --- quick test mode: small subset, fast steps ---
+QUICK_TEST = os.environ.get("QUICK_TEST", "0") == "1"
+QUICK_TRAIN_SAMPLES = int(os.environ.get("QUICK_TRAIN_SAMPLES", "200"))
+QUICK_EVAL_SAMPLES = int(os.environ.get("QUICK_EVAL_SAMPLES", "50"))
+
+# --- push to HF Hub if a token is present ---
+PUSH_TO_HUB = os.environ.get("HF_TOKEN") is not None
+
+# --- persistent output: mount Drive on Colab, else local (loud now, not silent) ---
 try:
     from google.colab import drive
     drive.mount("/content/drive")
     OUT = "/content/drive/MyDrive/whisper-hu"
-except Exception:
+    print(f"[storage] Drive mounted -> {OUT}")
+except Exception as e:
     OUT = "./whisper-hu"
+    print(f"[storage] Drive mount FAILED ({e}) -> using local: {OUT}")
+    print("[storage] WARNING: local Colab disk is wiped on runtime reset!")
+
+if QUICK_TEST:
+    OUT += "-quicktest"
 
 OUT_FINAL = OUT + "-final"
 
@@ -39,12 +54,14 @@ logging.basicConfig(level=logging.WARNING)
 logger = logging.getLogger(__name__)
 wer_metric = evaluate.load("wer")
 
+
 def normalize(texts):
     def clean(t):
         t = t.lower().strip()
         t = re.sub(r"\s+", " ", t)
         return t
     return [clean(t) for t in texts]
+
 
 def compute_metrics_factory(processor):
     def compute_metrics(pred):
@@ -56,7 +73,6 @@ def compute_metrics_factory(processor):
         pred_str = normalize(
             processor.batch_decode(pred_ids, skip_special_tokens=True)
         )
-
         label_str = normalize(
             processor.batch_decode(label_ids, skip_special_tokens=True)
         )
@@ -70,8 +86,16 @@ def compute_metrics_factory(processor):
 
     return compute_metrics
 
+
 def main():
     from transformers import Seq2SeqTrainer, Seq2SeqTrainingArguments
+
+    if PUSH_TO_HUB:
+        from huggingface_hub import login
+        login(os.environ["HF_TOKEN"])
+        print(f"[hub] checkpoints will push to -> {HF_REPO}")
+    else:
+        print("[hub] no HF_TOKEN set -> skipping Hub push, Drive/local only")
 
     processor = WhisperProcessor.from_pretrained(MODEL)
     processor.tokenizer.pad_token = processor.tokenizer.eos_token
@@ -85,25 +109,31 @@ def main():
     train_ds = CommonVoiceDataset(DATA, "train")
     eval_ds = CommonVoiceDataset(DATA, "dev")
 
+    if QUICK_TEST:
+        from torch.utils.data import Subset
+        train_ds = Subset(train_ds, range(min(QUICK_TRAIN_SAMPLES, len(train_ds))))
+        eval_ds = Subset(eval_ds, range(min(QUICK_EVAL_SAMPLES, len(eval_ds))))
+        print(f"[quicktest] train={len(train_ds)} eval={len(eval_ds)} samples")
+
     args = Seq2SeqTrainingArguments(
         output_dir=OUT,
         per_device_train_batch_size=16,
-        per_device_eval_batch_size=1,
+        per_device_eval_batch_size=8,
         generation_max_length=225,
         generation_num_beams=1,
         gradient_accumulation_steps=1,
         gradient_checkpointing=False,
-        warmup_steps=500,
+        warmup_steps=5 if QUICK_TEST else 500,
         lr_scheduler_type="linear",
-        learning_rate=5e-6,
-        num_train_epochs=3,
+        learning_rate=1e-5,
+        num_train_epochs=1 if QUICK_TEST else 3,
         eval_strategy="steps",
-        eval_steps=1000,
+        eval_steps=20 if QUICK_TEST else 1000,
         eval_accumulation_steps=10,
         logging_strategy="steps",
-        logging_steps=200,
+        logging_steps=5 if QUICK_TEST else 200,
         save_strategy="steps",
-        save_steps=1000,
+        save_steps=20 if QUICK_TEST else 1000,
         save_total_limit=3,
         load_best_model_at_end=True,
         metric_for_best_model="wer",
@@ -116,6 +146,9 @@ def main():
         disable_tqdm=True,
         report_to="none",
         remove_unused_columns=False,
+        push_to_hub=PUSH_TO_HUB,
+        hub_model_id=HF_REPO if PUSH_TO_HUB else None,
+        hub_strategy="checkpoint" if PUSH_TO_HUB else "every_save",
     )
 
     trainer = Seq2SeqTrainer(
@@ -127,11 +160,23 @@ def main():
         compute_metrics=compute_metrics_factory(processor),
     )
 
-    trainer.train()
+    # resume automatically if a checkpoint already exists in OUT
+    resume = os.path.isdir(OUT) and any(
+        d.startswith("checkpoint-") for d in os.listdir(OUT)
+    )
+    if resume:
+        print(f"[resume] found checkpoint in {OUT}, resuming")
+
+    trainer.train(resume_from_checkpoint=resume)
 
     processor.save_pretrained(OUT_FINAL)
     model.save_pretrained(OUT_FINAL)
     print(f"[saved] final model -> {OUT_FINAL}")
+
+    if PUSH_TO_HUB:
+        trainer.push_to_hub()
+        print(f"[hub] pushed final model -> https://huggingface.co/{HF_REPO}")
+
 
 if __name__ == "__main__":
     main()

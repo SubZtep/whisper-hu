@@ -1,4 +1,6 @@
 import os
+os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
+
 import re
 import torch
 import logging
@@ -117,23 +119,23 @@ def main():
 
     args = Seq2SeqTrainingArguments(
         output_dir=OUT,
-        per_device_train_batch_size=16,
-        per_device_eval_batch_size=8,
+        per_device_train_batch_size=8,
+        per_device_eval_batch_size=4,
         generation_max_length=225,
         generation_num_beams=1,
-        gradient_accumulation_steps=1,
-        gradient_checkpointing=False,
-        warmup_steps=5 if QUICK_TEST else 500,
+        gradient_accumulation_steps=2,  # keeps effective batch size 16
+        gradient_checkpointing=True,
+        warmup_steps=2 if QUICK_TEST else 500,
         lr_scheduler_type="linear",
         learning_rate=1e-5,
         num_train_epochs=1 if QUICK_TEST else 3,
         eval_strategy="steps",
-        eval_steps=20 if QUICK_TEST else 1000,
+        eval_steps=5 if QUICK_TEST else 1000,
         eval_accumulation_steps=10,
         logging_strategy="steps",
-        logging_steps=5 if QUICK_TEST else 200,
+        logging_steps=2 if QUICK_TEST else 200,
         save_strategy="steps",
-        save_steps=20 if QUICK_TEST else 1000,
+        save_steps=5 if QUICK_TEST else 1000,
         save_total_limit=3,
         load_best_model_at_end=True,
         metric_for_best_model="wer",

@@ -35,6 +35,36 @@
    python train.py
    ```
 
+## Training a different model size
+
+`train.py` is parameterized via env vars, so the same script trains any Whisper
+checkpoint and pushes to a matching HF repo — no code changes needed.
+
+| Variable        | Default                     | Purpose                                  |
+| ---------------- | ---------------------------- | ----------------------------------------- |
+| `WHISPER_MODEL`  | `openai/whisper-small`       | Base model to fine-tune                   |
+| `HF_REPO`        | `SubZtep/whisper-small-hu`   | HF Hub repo to push checkpoints/model to  |
+| `HF_TOKEN`       | —                             | HF write token; if unset, Hub push is skipped |
+| `QUICK_TEST`     | `0`                           | `1` = small subset, fast smoke-test run   |
+
+Example:
+
+```bash
+# default (small)
+python train.py
+
+# large-v3, separate HF repo
+WHISPER_MODEL=openai/whisper-large-v3 HF_REPO=SubZtep/whisper-large-v3-hu python train.py
+
+# quick smoke test before a full run
+QUICK_TEST=1 python train.py
+```
+
+Each model size gets its own HF Hub repo (e.g. `whisper-small-hu`,
+`whisper-large-v3-hu`) since model cards, weights, and repo size differ per
+checkpoint. Local/Drive output dirs are also namespaced per model
+(`whisper-hu-<model-name>`), so runs don't overwrite each other.
+
 ---
 
 [Download Dataset](https://mozilladatacollective.com/datasets/cmqinob6900wknr07s6fgcprx)

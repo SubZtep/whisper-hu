@@ -13,9 +13,9 @@ from transformers import WhisperProcessor, WhisperForConditionalGeneration
 from transformers.utils import logging as hf_logging
 
 DATA = "data/cv-corpus-26.0-2026-06-12/hu"
-MODEL = "openai/whisper-small"
+MODEL = os.environ.get("WHISPER_MODEL", "openai/whisper-small")
 LANG = "hu"
-HF_REPO = "SubZtep/whisper-hu"
+HF_REPO = os.environ.get("HF_REPO", "SubZtep/whisper-small-hu")
 
 # --- quick test mode: small subset, fast steps ---
 QUICK_TEST = os.environ.get("QUICK_TEST", "0") == "1"
@@ -29,10 +29,10 @@ PUSH_TO_HUB = os.environ.get("HF_TOKEN") is not None
 try:
     from google.colab import drive
     drive.mount("/content/drive")
-    OUT = "/content/drive/MyDrive/whisper-hu"
+    OUT = f"/content/drive/MyDrive/whisper-hu-{MODEL.split('/')[-1]}"
     print(f"[storage] Drive mounted -> {OUT}")
 except Exception as e:
-    OUT = "./whisper-hu"
+    OUT = f"./whisper-hu-{MODEL.split('/')[-1]}"
     print(f"[storage] Drive mount FAILED ({e}) -> using local: {OUT}")
     print("[storage] WARNING: local Colab disk is wiped on runtime reset!")
 

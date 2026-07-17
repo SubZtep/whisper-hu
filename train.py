@@ -153,15 +153,22 @@ def main():
         hub_strategy="checkpoint" if PUSH_TO_HUB else "every_save",
     )
 
-    trainer = Seq2SeqTrainer(
+    import inspect
+    trainer_kwargs = dict(
         model=model,
         args=args,
         train_dataset=train_ds,
         eval_dataset=eval_ds,
         data_collator=WhisperCollator(processor),
         compute_metrics=compute_metrics_factory(processor),
-        processing_class=processor,
     )
+    trainer_params = inspect.signature(Seq2SeqTrainer.__init__).parameters
+    if "processing_class" in trainer_params:
+        trainer_kwargs["processing_class"] = processor
+    else:
+        trainer_kwargs["tokenizer"] = processor
+
+    trainer = Seq2SeqTrainer(**trainer_kwargs)
 
     # resume automatically if a checkpoint already exists in OUT
     resume = os.path.isdir(OUT) and any(

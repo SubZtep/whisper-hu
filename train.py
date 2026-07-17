@@ -185,7 +185,8 @@ def main():
 
     if PUSH_TO_HUB:
         trainer.push_to_hub()
-        print(f"[hub] pushed final model -> https://huggingface.co/{HF_REPO}")
+        processor.push_to_hub(HF_REPO)
+        print(f"[hub] pushed final model + processor -> https://huggingface.co/{HF_REPO}")
 
 
 if __name__ == "__main__":

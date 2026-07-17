@@ -1,3 +1,8 @@
+## Run on Google Colab
+
+🔗 [My Interactive Python Notebook](https://colab.research.google.com/drive/1YvY3lClsRgdtOR5prBtf_xTcYZ21Vn-a?usp=sharing)
+([CT2 conversion](https://colab.research.google.com/drive/1OF4xFBVoJZUn1Az232zNOR6P-QOLbxW-?usp=sharing))
+
 ## Run locally
 
 > [!IMPORTANT]  

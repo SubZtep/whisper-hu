@@ -7,10 +7,21 @@ import logging
 import warnings
 import evaluate
 import numpy as np
+import threading
+import time
+from datetime import datetime
+
 from dataset import CommonVoiceDataset
 from collator import WhisperCollator
 from transformers import WhisperProcessor, WhisperForConditionalGeneration
 from transformers.utils import logging as hf_logging
+
+
+def keep_colab_alive():
+    while True:
+        print(f"[keepalive] {datetime.now():%H:%M:%S}", flush=True)
+        time.sleep(60)
+
 
 DATA = "data/cv-corpus-26.0-2026-06-12/hu"
 MODEL = os.environ.get("WHISPER_MODEL", "openai/whisper-small")

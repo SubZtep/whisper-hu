@@ -115,8 +115,7 @@ def main():
     else:
         print("[hub] no HF_TOKEN set -> skipping Hub push, Drive/local only")
 
-    processor = WhisperProcessor.from_pretrained(MODEL)
-    processor.tokenizer.pad_token = processor.tokenizer.eos_token
+    processor = WhisperProcessor.from_pretrained(MODEL, language="hu", task="transcribe")
 
     model = WhisperForConditionalGeneration.from_pretrained(MODEL)
     model.config.use_cache = False

@@ -4,6 +4,7 @@ import numpy as np
 class WhisperCollator:
     def __init__(self, processor):
         self.processor = processor
+        self.sot_id = processor.tokenizer.convert_tokens_to_ids("<|startoftranscript|>")
 
     def __call__(self, batch):
         audio = []
@@ -25,15 +26,20 @@ class WhisperCollator:
             return_tensors="pt",
         )
 
-        labels = self.processor.tokenizer(
+        enc = self.processor.tokenizer(
             texts,
             padding=True,
             return_tensors="pt",
-            return_attention_mask=False,
-        ).input_ids
+        )
 
-        labels = labels.clone()
-        labels[labels == self.processor.tokenizer.pad_token_id] = -100
+        # pad and eos share an id in Whisper: mask via attention mask so the
+        # real eos at the end of each sentence stays in the labels
+        labels = enc.input_ids.masked_fill(enc.attention_mask.eq(0), -100)
+
+        # the trainer prepends the decoder start token when shifting, and the
+        # tokenizer already emits it -> drop it so it doesn't appear twice
+        if (labels[:, 0] == self.sot_id).all():
+            labels = labels[:, 1:]
 
         return {
             "input_features": features.input_features,

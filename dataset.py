@@ -2,7 +2,6 @@ import os
 import torch
 import librosa
 import logging
-import functools
 import numpy as np
 import pandas as pd
 import soundfile as sf
@@ -11,7 +10,6 @@ from torch.utils.data import Dataset
 logger = logging.getLogger(__name__)
 logging.getLogger("numba").setLevel(logging.WARNING)
 
-@functools.lru_cache(maxsize=2000)
 def load_audio(path):
     return sf.read(path, dtype="float32")
 

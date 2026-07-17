@@ -20,7 +20,7 @@ from transformers.utils import logging as hf_logging
 def keep_colab_alive():
     while True:
         print(f"[keepalive] {datetime.now():%H:%M:%S}", flush=True)
-        time.sleep(60)
+        time.sleep(300)
 
 
 DATA = "data/cv-corpus-26.0-2026-06-12/hu"
@@ -103,6 +103,8 @@ def compute_metrics_factory(processor):
 def main():
     from transformers import Seq2SeqTrainer, Seq2SeqTrainingArguments
 
+    threading.Thread(target=keep_colab_alive, daemon=True).start()
+
     if PUSH_TO_HUB:
         from huggingface_hub import login
         login(os.environ["HF_TOKEN"])
@@ -155,7 +157,7 @@ def main():
         fp16=True,
         bf16=False,
         max_grad_norm=1.0,
-        dataloader_num_workers=4,
+        dataloader_num_workers=2,
         disable_tqdm=True,
         report_to="none",
         remove_unused_columns=False,

@@ -17,6 +17,17 @@ from transformers import WhisperProcessor, WhisperForConditionalGeneration
 from transformers.utils import logging as hf_logging
 
 
+# torch>=2.6 defaults torch.load to weights_only=True, which rejects the numpy
+# objects inside a checkpoint's rng_state.pth on resume -> allowlist them
+try:
+    _np_reconstruct = np.core.multiarray._reconstruct
+except AttributeError:
+    _np_reconstruct = np._core.multiarray._reconstruct
+torch.serialization.add_safe_globals(
+    [_np_reconstruct, np.ndarray, np.dtype, np.dtypes.UInt32DType]
+)
+
+
 def keep_colab_alive():
     while True:
         print(f"[keepalive] {datetime.now():%H:%M:%S}", flush=True)

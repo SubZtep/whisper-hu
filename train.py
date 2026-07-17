@@ -41,8 +41,9 @@ PUSH_TO_HUB = os.environ.get("HF_TOKEN") is not None
 
 # --- persistent output: mount Drive on Colab, else local (loud now, not silent) ---
 try:
-    from google.colab import drive
-    drive.mount("/content/drive")
+    if not os.path.isdir("/content/drive/MyDrive"):
+        from google.colab import drive
+        drive.mount("/content/drive")
     OUT = f"/content/drive/MyDrive/whisper-hu-{MODEL.split('/')[-1]}"
     print(f"[storage] Drive mounted -> {OUT}")
 except Exception as e:

@@ -33,6 +33,9 @@ QUICK_TEST = os.environ.get("QUICK_TEST", "0") == "1"
 QUICK_TRAIN_SAMPLES = int(os.environ.get("QUICK_TRAIN_SAMPLES", "200"))
 QUICK_EVAL_SAMPLES = int(os.environ.get("QUICK_EVAL_SAMPLES", "50"))
 
+# --- cap eval set size: full 13k-sample dev takes hours per eval on a T4 ---
+EVAL_SAMPLES = int(os.environ.get("EVAL_SAMPLES", "1500"))
+
 # --- push to HF Hub if a token is present ---
 PUSH_TO_HUB = os.environ.get("HF_TOKEN") is not None
 
@@ -129,11 +132,17 @@ def main():
         train_ds = Subset(train_ds, range(min(QUICK_TRAIN_SAMPLES, len(train_ds))))
         eval_ds = Subset(eval_ds, range(min(QUICK_EVAL_SAMPLES, len(eval_ds))))
         print(f"[quicktest] train={len(train_ds)} eval={len(eval_ds)} samples")
+    elif len(eval_ds) > EVAL_SAMPLES:
+        from torch.utils.data import Subset
+        rng = np.random.default_rng(42)
+        idx = rng.choice(len(eval_ds), EVAL_SAMPLES, replace=False)
+        eval_ds = Subset(eval_ds, idx.tolist())
+        print(f"[eval] using random subset of dev: {EVAL_SAMPLES} samples")
 
     args = Seq2SeqTrainingArguments(
         output_dir=OUT,
         per_device_train_batch_size=8,
-        per_device_eval_batch_size=4,
+        per_device_eval_batch_size=16,
         generation_max_length=225,
         generation_num_beams=1,
         gradient_accumulation_steps=2,  # keeps effective batch size 16
@@ -189,6 +198,23 @@ def main():
     )
     if resume:
         print(f"[resume] found checkpoint in {OUT}, resuming")
+    elif PUSH_TO_HUB:
+        # disconnect recovery: pull the last checkpoint pushed to the Hub, if any
+        try:
+            import json
+            from huggingface_hub import hf_hub_download, snapshot_download
+            state_path = hf_hub_download(HF_REPO, "last-checkpoint/trainer_state.json")
+            with open(state_path) as f:
+                step = json.load(f)["global_step"]
+            snapshot_download(HF_REPO, allow_patterns="last-checkpoint/*", local_dir=OUT)
+            os.rename(
+                os.path.join(OUT, "last-checkpoint"),
+                os.path.join(OUT, f"checkpoint-{step}"),
+            )
+            resume = True
+            print(f"[resume] pulled last-checkpoint (step {step}) from {HF_REPO}, resuming")
+        except Exception as e:
+            print(f"[resume] no Hub checkpoint to resume from ({e}) -> starting fresh")
 
     trainer.train(resume_from_checkpoint=resume)
 

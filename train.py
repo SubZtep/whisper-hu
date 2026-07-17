@@ -160,6 +160,7 @@ def main():
         eval_dataset=eval_ds,
         data_collator=WhisperCollator(processor),
         compute_metrics=compute_metrics_factory(processor),
+        processing_class=processor,
     )
 
     # resume automatically if a checkpoint already exists in OUT
